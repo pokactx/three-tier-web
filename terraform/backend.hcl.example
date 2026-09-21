@@ -1,0 +1,8 @@
+# 同じ state ではこのバケットを作らない（鶏と卵）。
+# 先に手で（または別 state で）バケットと DynamoDB を作り、
+# terraform init -backend-config=backend.hcl
+bucket         = "your-tfstate-bucket"
+key            = "three-tier/terraform.tfstate"
+region         = "ap-northeast-1"
+dynamodb_table = "your-tfstate-lock"
+encrypt        = true

@@ -1,0 +1,19 @@
+version: 0.0
+os: linux
+files:
+  - source: opt
+    destination: /opt/app
+file_exists_behavior: OVERWRITE
+hooks:
+  AfterInstall:
+    - location: scripts/after_install.sh
+      timeout: 600
+      runas: root
+  ApplicationStart:
+    - location: scripts/start.sh
+      timeout: 120
+      runas: root
+  ValidateService:
+    - location: scripts/validate.sh
+      timeout: 60
+      runas: root

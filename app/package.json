@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev": "bun --watch src/index.ts",
+    "build": "prisma generate && bunx tsc --noEmit && bun build src/index.ts --outdir dist --target node --external @prisma/client",
+    "start": "bun dist/index.js",
+    "migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.787.0",
+    "@aws-sdk/client-secrets-manager": "^3.787.0",
+    "@aws-sdk/s3-request-presigner": "^3.787.0",
+    "@hono/node-server": "^1.14.1",
+    "@prisma/client": "^6.16.2",
+    "hono": "^4.7.7",
+    "prisma": "^6.16.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}

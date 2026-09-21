@@ -1,0 +1,57 @@
+#!/bin/bash
+set -euo pipefail
+dnf install -y nodejs awscli ruby wget
+mkdir -p /opt/app /etc/app
+chmod 700 /etc/app
+
+umask 077
+aws secretsmanager get-secret-value \
+  --region "${region}" \
+  --secret-id "${app_secret_arn}" \
+  --query SecretString \
+  --output text \
+  >/etc/app/secret.json
+python3 - <<'PY'
+import json
+from pathlib import Path
+raw = json.loads(Path("/etc/app/secret.json").read_text())
+allowed = ("SESSION_SECRET", "THIRD_PARTY_API_KEY")
+lines = [f"{k}={raw[k]}" for k in allowed if k in raw and raw[k]]
+Path("/etc/app/secrets.env").write_text("\n".join(lines) + "\n")
+Path("/etc/app/secret.json").unlink()
+PY
+printf '%s\n' "AWS_REGION=${region}" "RDS_PRIMARY=${rds_primary}" "RDS_SECRET_ARN=${rds_secret_arn}" >/etc/app/rds.env
+chmod 600 /etc/app/secrets.env /etc/app/rds.env
+umask 022
+
+if [ ! -f /opt/app/index.js ]; then
+  printf '%s\n' 'import{createServer}from"node:http";createServer((q,s)=>{if(q.url==="/health"){s.writeHead(200);s.end("ok")}else{s.writeHead(503);s.end()}}).listen(80)' >/opt/app/index.js
+  printf '%s\n' '{"type":"module"}' >/opt/app/package.json
+  chmod 644 /opt/app/index.js /opt/app/package.json
+fi
+
+cat >/etc/systemd/system/app.service <<EOF
+[Unit]
+Description=hono
+After=network.target
+[Service]
+Type=simple
+EnvironmentFile=/etc/app/secrets.env
+Environment=PORT=80
+Environment=AWS_REGION=${region}
+Environment=UPLOAD_BUCKET=${upload_bucket}
+Environment=RDS_PRIMARY=${rds_primary}
+Environment=RDS_SECRET_ARN=${rds_secret_arn}
+WorkingDirectory=/opt/app
+ExecStart=/usr/bin/node /opt/app/index.js
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable --now app.service
+
+cd /tmp
+wget -q "https://aws-codedeploy-${region}.s3.${region}.amazonaws.com/latest/install"
+chmod +x ./install
+./install auto
+systemctl enable --now codedeploy-agent

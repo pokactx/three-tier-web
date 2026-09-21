@@ -1,0 +1,42 @@
+version: 0.2
+
+env:
+  variables:
+    BUN_INSTALL: /root/.bun
+    DATABASE_URL: mysql://appadmin:localpass@127.0.0.1:3306/app
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - curl -fsSL https://bun.sh/install | bash
+      - export PATH="$BUN_INSTALL/bin:$PATH"
+      - bun --version
+  build:
+    commands:
+      - export PATH="$BUN_INSTALL/bin:$PATH"
+      - (cd web && bun install --frozen-lockfile && bun run build)
+      - (cd app && bun install --frozen-lockfile && bun run build)
+      - mkdir -p web-bundle/html web-bundle/scripts app-bundle/opt app-bundle/scripts
+      - cp deploy/web/appspec.yml web-bundle/appspec.yml
+      - cp deploy/web/scripts/* web-bundle/scripts/
+      - cp -R web/dist/. web-bundle/html/
+      - cp deploy/app/appspec.yml app-bundle/appspec.yml
+      - cp deploy/app/scripts/* app-bundle/scripts/
+      - cp app/dist/index.js app-bundle/opt/
+      - cp app/package.json app-bundle/opt/
+      - cp -R app/prisma app-bundle/opt/prisma
+      - chmod +x web-bundle/scripts/* app-bundle/scripts/*
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: web-bundle
+  name: WebArtifact
+  secondary-artifacts:
+    AppArtifact:
+      files:
+        - "**/*"
+      base-directory: app-bundle
+      name: AppArtifact
