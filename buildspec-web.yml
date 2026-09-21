@@ -1,0 +1,28 @@
+version: 0.2
+
+env:
+  variables:
+    BUN_INSTALL: /root/.bun
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - curl -fsSL https://bun.sh/install | bash
+      - export PATH="$BUN_INSTALL/bin:$PATH"
+      - bun --version
+  build:
+    commands:
+      - export PATH="$BUN_INSTALL/bin:$PATH"
+      - (cd web && bun install --frozen-lockfile && bun run build)
+      - mkdir -p bundle/html bundle/scripts
+      - cp deploy/web/appspec.yml bundle/appspec.yml
+      - cp deploy/web/scripts/* bundle/scripts/
+      - cp -R web/dist/. bundle/html/
+      - chmod +x bundle/scripts/*
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: bundle

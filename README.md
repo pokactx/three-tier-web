@@ -121,7 +121,7 @@ Allow のみ。サブネットではなく ENI に付ける。
 ```
 GitHub main
   → CodePipeline（V2、QUEUED）
-    → CodeBuild（bun、VPC に入れない）
+    → CodeBuild Web / App（並行、bun、VPC に入れない）
     → CodeDeploy Web（in-place、OneAtATime、ALB ヘルス待ち）
     → CodeDeploy App（同上。AfterInstall で migrate）
 ```

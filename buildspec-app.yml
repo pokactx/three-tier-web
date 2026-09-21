@@ -1,0 +1,31 @@
+version: 0.2
+
+env:
+  variables:
+    BUN_INSTALL: /root/.bun
+    DATABASE_URL: mysql://appadmin:localpass@127.0.0.1:3306/app
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - curl -fsSL https://bun.sh/install | bash
+      - export PATH="$BUN_INSTALL/bin:$PATH"
+      - bun --version
+  build:
+    commands:
+      - export PATH="$BUN_INSTALL/bin:$PATH"
+      - (cd app && bun install --frozen-lockfile && bun run build)
+      - mkdir -p bundle/opt bundle/scripts
+      - cp deploy/app/appspec.yml bundle/appspec.yml
+      - cp deploy/app/scripts/* bundle/scripts/
+      - cp app/dist/index.js bundle/opt/
+      - cp app/package.json bundle/opt/
+      - cp -R app/prisma bundle/opt/prisma
+      - chmod +x bundle/scripts/*
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: bundle

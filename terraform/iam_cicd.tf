@@ -72,7 +72,10 @@ data "aws_iam_policy_document" "codepipeline" {
       "codebuild:BatchGetBuilds",
       "codebuild:StartBuild",
     ]
-    resources = [aws_codebuild_project.app.arn]
+    resources = [
+      aws_codebuild_project.web.arn,
+      aws_codebuild_project.app.arn,
+    ]
   }
 
   statement {
