@@ -5,9 +5,13 @@ resource "aws_cloudwatch_log_group" "session" {
 
 data "aws_iam_policy_document" "session_logs" {
   statement {
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
+  }
+
+  statement {
     actions = [
       "logs:CreateLogStream",
-      "logs:DescribeLogGroups",
       "logs:DescribeLogStreams",
       "logs:PutLogEvents",
     ]
