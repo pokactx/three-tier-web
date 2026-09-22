@@ -9,6 +9,8 @@ __pycache__/
 terraform.tfvars
 crash.log
 tfplan
+terraform/config1.html
+terraform/graph.html
 node_modules/
 dist/
 .env

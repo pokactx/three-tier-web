@@ -45,9 +45,10 @@ Allow のみ。サブネットではなく ENI に付ける。
 | SG | 入 | 出 |
 |---|---|---|
 | 公開 ALB | 80 を CloudFront プレフィックスリストのみ。HTTP は秘密ヘッダ必須 | Web:80、App:80 |
-| Web | 公開 ALB から 80 | 443（更新・SSM・外部） |
-| App | 公開 ALB から 80 | RDS:3306、443（S3 署名用 SDK・外部 API・SSM） |
-| RDS | App から 3306 | なし（必要なら応答のみ） |
+| Web | 公開 ALB から 80 | 443（更新・SSM・外部）。SSM は NAT |
+| App | 公開 ALB から 80 | RDS:3306、443（S3 署名用 SDK・外部 API・SSM）。SSM は NAT |
+| 踏み台 | なし | 443（SSM を NAT）、RDS:3306 |
+| RDS | App と踏み台から 3306 | なし（必要なら応答のみ） |
 
 ## アプリ
 
@@ -76,7 +77,8 @@ Allow のみ。サブネットではなく ENI に付ける。
 - App ASG: 同上。アプリは RDS **Primary エンドポイントだけ** を見る。Standby には接続しない
 - RDS MySQL Multi-AZ。暗号化、非公開。DB 名 `app`。CodeDeploy の AfterInstall で `prisma migrate deploy`
 - インスタンスロール: SSM、CodeDeploy エージェント、artifact バケットの Get。App は uploads の Put/Get と Secrets Manager の当該シークレットだけ Get
-- SSH は開けない。操作は Session Manager
+- SSH は開けない。操作は Session Manager。エージェントは非公開サブネットから NAT で SSM の公開エンドポイントへ出る。SSM 用 VPC エンドポイントは置かない
+- 踏み台は App サブネットの 1 台（`t3.micro`、公開 IP なし）。RDS を見るときはここを経由する。アプリ本体には入らない。シェルは CloudWatch `/midsize/session-manager` に残る（アイドル 20 分、最長 60 分）
 
 ## エッジ
 
@@ -103,6 +105,7 @@ Allow のみ。サブネットではなく ENI に付ける。
 - アプリから Standby への接続
 - S3 を VPC 内に置くこと
 - バケットを Gateway Endpoint 専用に閉じること
+- SSM 用のインタフェース VPC エンドポイント（経路は NAT）
 - 自動 `terraform apply`（人間が実行する）
 - 同じ state でリモートバックエンド用バケットを作ること（鶏と卵）
 - フロントの `VITE_*` にシークレットを置くこと
@@ -134,6 +137,17 @@ GitHub main
 4. `main` へ push するとビルドと配布が走る
 
 ローカル確認は従来どおり bun。本番へは push だけ。`scripts/publish.sh` は使わない。
+
+RDS の中身は踏み台経由。パスワードは `midsize/rds/master`。踏み台には置かない。
+
+```bash
+aws ssm start-session \
+  --target "$(terraform -chdir=terraform output -raw bastion_instance_id)" \
+  --document-name AWS-StartPortForwardingSessionToRemoteHost \
+  --parameters "host=$(terraform -chdir=terraform output -raw rds_primary_address),portNumber=3306,localPortNumber=3306"
+```
+
+別ターミナルで `mysql -h 127.0.0.1 -P 3306 -u appadmin -p`。人間の IAM に `ssm:StartSession` が要る。
 
 ## 動かし方
 
