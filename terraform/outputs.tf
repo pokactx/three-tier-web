@@ -41,3 +41,7 @@ output "github_connection_arn" {
 output "pipeline_name" {
   value = aws_codepipeline.app.name
 }
+
+output "bastion_instance_id" {
+  value = aws_instance.bastion.id
+}
